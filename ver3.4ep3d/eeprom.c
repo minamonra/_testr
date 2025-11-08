@@ -2,18 +2,19 @@
 #include "stm32f10x.h"
 
 #define EEPROM_SIZE 4096
-#define STRING_SIZE 16
-#define MAX_STRINGS 200
+//#define STRING_SIZE 32          // Изменено с 16 на 32
+//#define MAX_STRINGS 100         // Изменено с 200 на 100
 #define VAR_UINT16_COUNT 20
+#define PAGE_SIZE 32            // Размер страницы для постраничного доступа
 
 #ifndef NULL
 #define NULL ((void *)0)
 #endif
 
-// Простая программная задержка (примерно)
+// Простая программная задержка
 void delay_simple(uint32_t count) {
   while (count--) {
-    __NOP();    // asm nop для небольшого замедления
+    __NOP();
   }
 }
 
@@ -26,8 +27,10 @@ int I2C_WaitEvent(uint32_t event) {
   return 1;
 }
 
-// Запись байта в EEPROM
-int eeprom_write_byte(uint16_t addr, uint8_t data) {
+// Запись страницы данных в EEPROM (постранично)
+int eeprom_write_page(uint16_t addr, uint8_t *data, uint16_t length) {
+  if (length == 0 || length > PAGE_SIZE) return -1;
+  
   while (I2C1->SR2 & I2C_SR2_BUSY);
 
   I2C1->CR1 |= I2C_CR1_START;
@@ -43,17 +46,21 @@ int eeprom_write_byte(uint16_t addr, uint8_t data) {
   I2C1->DR = addr & 0xFF;
   if (!I2C_WaitEvent(I2C_SR1_TXE)) return -1;
 
-  I2C1->DR = data;
-  if (!I2C_WaitEvent(I2C_SR1_TXE)) return -1;
+  // Записываем все байты страницы
+  for (uint16_t i = 0; i < length; i++) {
+    I2C1->DR = data[i];
+    if (!I2C_WaitEvent(I2C_SR1_TXE)) return -1;
+  }
 
   I2C1->CR1 |= I2C_CR1_STOP;
-  // Простейшая задержка для записи EEPROM
-  delay_simple(50000);
+  delay_simple(100000);  // Увеличиваем задержку для записи страницы
   return 0;
 }
 
-// Чтение байта из EEPROM
-int eeprom_read_byte(uint16_t addr, uint8_t *data) {
+// Чтение страницы данных из EEPROM (постранично)
+int eeprom_read_page(uint16_t addr, uint8_t *data, uint16_t length) {
+  if (length == 0 || length > PAGE_SIZE) return -1;
+  
   while (I2C1->SR2 & I2C_SR2_BUSY);
 
   I2C1->CR1 |= I2C_CR1_START;
@@ -78,230 +85,191 @@ int eeprom_read_byte(uint16_t addr, uint8_t *data) {
 
   I2C1->CR1 &= ~I2C_CR1_ACK;
 
-  if (!I2C_WaitEvent(I2C_SR1_RXNE)) return -1;
-
-  *data = I2C1->DR;
+  // Читаем все байты страницы
+  for (uint16_t i = 0; i < length; i++) {
+    if (i == length - 1) {
+      I2C1->CR1 &= ~I2C_CR1_ACK;  // Для последнего байта
+    } else {
+      I2C1->CR1 |= I2C_CR1_ACK;   // Для всех кроме последнего
+    }
+    
+    if (!I2C_WaitEvent(I2C_SR1_RXNE)) return -1;
+    data[i] = I2C1->DR;
+  }
 
   I2C1->CR1 |= I2C_CR1_STOP;
   I2C1->CR1 |= I2C_CR1_ACK;
-
   return 0;
 }
 
-// Записывает строку в EEPROM
-// addr Начальный адрес для записи
-// str Указатель на строку (максимум 15 символов + терминатор)
-// ret 0 в случае успеха, -1 при ошибке
+// Записывает строку в EEPROM ПОСТРАНИЧНО
 int eeprom_write_string(uint16_t addr, const char *str) {
+  uint8_t buffer[STRING_SIZE] = {0};
   uint16_t i = 0;
 
-  // Записываем каждый байт строки включая нулевой терминатор
-  while (i < 16 && str[i] != '\0') {
-    if (eeprom_write_byte(addr + i, (uint8_t)str[i]) != 0) {
-      return -1;    // Ошибка записи
-    }
+  // Копируем строку в буфер
+  while (i < STRING_SIZE - 1 && str[i] != '\0') {
+    buffer[i] = (uint8_t)str[i];
     i++;
   }
+  buffer[i] = '\0';  // Гарантируем терминатор
 
-  // Записываем нулевой терминатор, если строка короче 16 символов
-  if (i < 16) {
-    if (eeprom_write_byte(addr + i, '\0') != 0) {
-      return -1;
-    }
-  }
-  return 0;    // Успех
+  // Записываем всю страницу сразу
+  return eeprom_write_page(addr, buffer, STRING_SIZE);
 }
 
-// Читает строку из EEPROM
-// addr Начальный адрес для чтения
-// str Буфер для строки (минимум 16 байт)
-// ret 0 в случае успеха, -1 при ошибке
+// Читает строку из EEPROM ПОСТРАНИЧНО
 int eeprom_read_string(uint16_t addr, char *str) {
-  uint8_t byte;
-  uint16_t i = 0;
+  uint8_t buffer[STRING_SIZE];
+  
+  // Читаем всю страницу сразу
+  if (eeprom_read_page(addr, buffer, STRING_SIZE) != 0) {
+    return -1;
+  }
 
-  // Читаем байты пока не встретим терминатор или не достигнем максимума
-  while (i < 16) {
-    if (eeprom_read_byte(addr + i, &byte) != 0) {
-      return -1;    // Ошибка чтения
+  // Копируем и обрабатываем данные
+  for (uint16_t i = 0; i < STRING_SIZE; i++) {
+    // Заменяем 0xFF на пробелы
+    if (buffer[i] == 0xFF) {
+      str[i] = ' ';
+    } else {
+      str[i] = (char)buffer[i];
     }
-    str[i] = (char)byte;
-
-    // Если встретили нулевой терминатор - выходим
-    if (byte == '\0') {
+    
+    // Если встретили терминатор - выходим
+    if (buffer[i] == '\0') {
       break;
     }
-    i++;
   }
-
-  // Гарантируем, что строка всегда заканчивается терминатором
-  if (i == 16) {
-    str[15] = '\0';
+  
+  // Гарантируем терминатор
+  if (str[STRING_SIZE - 1] != '\0') {
+    str[STRING_SIZE - 1] = '\0';
   }
-  return 0;    // Успех
+  
+  return 0;
 }
 
-// Адрес начала блока переменных uint16_t
+// Адрес начала блока переменных uint16_t (теперь 100 * 32 = 3200)
 #define VARS_START_ADDR (MAX_STRINGS * STRING_SIZE)    // 3200
 
-
-// Записывает строку длиной до 15 символов + терминатор в EEPROM по номеру строки (0..MAX_STRINGS-1)
-// string_num Номер строки (0..MAX_STRINGS-1)
-// str Строка для записи
-// ret 0 — успех, -1 — ошибка записи, -2 — номер строки вне диапазона
+// Записывает строку ПОСТРАНИЧНО по номеру строки
 int eeprom_write_string_by_num(uint16_t string_num, const char *str) {
   if (string_num >= MAX_STRINGS) return -2;
 
   uint16_t addr = string_num * STRING_SIZE;
-  uint16_t i    = 0;
-
-  // Записываем до 15 символов, последний байт — терминатор
-  while (i < STRING_SIZE - 1 && str[i] != '\0') {
-    if (eeprom_write_byte(addr + i, (uint8_t)str[i]) != 0) {
-      return -1;
-    }
-    i++;
-  }
-  // Записываем терминатор '\0'
-  if (eeprom_write_byte(addr + i, '\0') != 0) { return -1; }
-
-  // Остальные байты (если есть) заполняем нулями
-  while (i < STRING_SIZE) {
-    if (eeprom_write_byte(addr + i, '\0') != 0) {
-      return -1;
-    }
-    i++;
-  }
-  return 0;
-}
-
-// При чтении каждого байта из EEPROM проверяется, равен ли он 0xFF
-// Если да - заменяется на пробел ' ' (код 0x20)
-// Если нет - используется как есть
-int eeprom_read_string_by_num(uint16_t string_num, char *str) {
-  if (str == NULL) return -1;    // Проверка указателя
-  if (string_num >= MAX_STRINGS) return -2;    // Проверка диапазона
-
-  uint16_t addr = string_num * STRING_SIZE;
-  uint8_t byte;
+  uint8_t buffer[STRING_SIZE] = {0};
   uint16_t i = 0;
 
-  for (; i < STRING_SIZE - 1; i++) {    // Оставляем место для терминатора
-    if (eeprom_read_byte(addr + i, &byte) != 0) {
-      str[i] = '\0';                    // Завершаем строку при ошибке чтения
-      return -1;                        // Возвращаем ошибку
-    }
+  // Подготавливаем буфер
+  while (i < STRING_SIZE - 1 && str[i] != '\0') {
+    buffer[i] = (uint8_t)str[i];
+    i++;
+  }
+  buffer[i] = '\0';
 
-    // ЗАМЕНА 0xFF на пробел
-    if (byte == 0xFF) {
+  // Записываем страницу целиком
+  return eeprom_write_page(addr, buffer, STRING_SIZE);
+}
+
+// Читает строку ПОСТРАНИЧНО по номеру строки
+int eeprom_read_string_by_num(uint16_t string_num, char *str) {
+  if (str == NULL) return -1;
+  if (string_num >= MAX_STRINGS) return -2;
+
+  uint16_t addr = string_num * STRING_SIZE;
+  uint8_t buffer[STRING_SIZE];
+
+  // Читаем страницу целиком
+  if (eeprom_read_page(addr, buffer, STRING_SIZE) != 0) {
+    return -1;
+  }
+
+  // Обрабатываем данные
+  uint16_t i;
+  for (i = 0; i < STRING_SIZE - 1; i++) {
+    if (buffer[i] == 0xFF) {
       str[i] = ' ';
     } else {
-      str[i] = (char)byte;
+      str[i] = (char)buffer[i];
     }
+    
+    if (buffer[i] == '\0') break;
+  }
+  str[i] = '\0';
 
-    if (byte == '\0')
-      break;    // Нашли конец строки
-  }
-  // Если не нашли '\0' - принудительно ставим в конце
-  if (i == STRING_SIZE - 1) {
-    str[i] = '\0';
-  }
   return 0;
 }
 
-
-// Очищает строку в EEPROM (записывает все байты как 0xFF)
-// string_num Номер строки (0..MAX_STRINGS-1)
-// ret 0 — успех, -1 — ошибка записи, -2 — номер строки вне диапазона
+// Очищает строку в EEPROM (записывает всю страницу 0xFF)
 int eeprom_clear_string(uint16_t string_num) {
   if (string_num >= MAX_STRINGS) return -2;
 
   uint16_t addr = string_num * STRING_SIZE;
-
+  uint8_t clear_buffer[STRING_SIZE];
+  
+  // Заполняем буфер 0xFF
   for (uint16_t i = 0; i < STRING_SIZE; i++) {
-    if (eeprom_write_byte(addr + i, 0xFF) != 0) {
-      return -1;
-    }
+    clear_buffer[i] = 0xFF;
   }
-  return 0;
+
+  // Записываем страницу очистки
+  return eeprom_write_page(addr, clear_buffer, STRING_SIZE);
 }
 
-
-// Проверяет, есть ли данные в строке (не все байты 0xFF)
-// string_num Номер строки (0..MAX_STRINGS-1)
-// ret 1 — данные есть, 0 — пусто, -1 — ошибка чтения, -2 — номер строки вне диапазона
+// Проверяет, есть ли данные в строке
 int eeprom_is_string_used(uint16_t string_num) {
   if (string_num >= MAX_STRINGS) return -2;
 
   uint16_t addr = string_num * STRING_SIZE;
-  uint8_t byte;
+  uint8_t buffer[STRING_SIZE];
 
+  // Читаем всю страницу
+  if (eeprom_read_page(addr, buffer, STRING_SIZE) != 0) return -1;
+
+  // Проверяем есть ли не-0xFF байты
   for (uint16_t i = 0; i < STRING_SIZE; i++) {
-    if (eeprom_read_byte(addr + i, &byte) != 0)
-      return -1;
-    if (byte != 0xFF)
-      return 1;    // Найден непустой байт
-  }
-  return 0;        // Все байты пустые (0xFF)
-}
-
-
-// Полностью очищает все строки (записывает 0xFF)
-// ret 0 — успех, -1 — ошибка записи
-int eeprom_clear_all_strings(void) {
-  for (uint16_t i = 0; i < MAX_STRINGS; i++) {
-    if (eeprom_clear_string(i) != 0)
-      return -1;
+    if (buffer[i] != 0xFF) return 1;
   }
   return 0;
 }
 
+// Остальные функции остаются без изменений, но используют новые адреса
+int eeprom_clear_all_strings(void) {
+  for (uint16_t i = 0; i < MAX_STRINGS; i++) {
+    if (eeprom_clear_string(i) != 0) return -1;
+  }
+  return 0;
+}
 
-// Записывает uint16_t переменную в EEPROM по номеру (1..20)
-// var_num Номер переменной (1..20)
-// value Значение для записи
-// ret 0 — успех, -1 — ошибка записи, -2 — номер вне диапазона
 int eeprom_write_uint16_by_num(uint16_t var_num, uint16_t value) {
   if (var_num == 0 || var_num > VAR_UINT16_COUNT) return -2;
 
   uint16_t addr = VARS_START_ADDR + (var_num - 1) * 2;
 
-  // Записываем младший байт
-  if (eeprom_write_byte(addr, (uint8_t)(value & 0xFF)) != 0) return -1;
-  // Записываем старший байт
-  if (eeprom_write_byte(addr + 1, (uint8_t)((value >> 8) & 0xFF)) != 0) return -1;
-
-  return 0;
+  // Для записи отдельных байтов оставляем побайтовые функции
+  uint8_t data[2] = {(uint8_t)(value & 0xFF), (uint8_t)((value >> 8) & 0xFF)};
+  return eeprom_write_page(addr, data, 2);
 }
 
-
-// Читает uint16_t переменную из EEPROM по номеру (1..20)
-// var_num Номер переменной (1..20)
-// value Указатель для сохранения результата
-// ret 0 — успех, -1 — ошибка чтения, -2 — номер вне диапазона
 int eeprom_read_uint16_by_num(uint16_t var_num, uint16_t *value) {
   if (var_num == 0 || var_num > VAR_UINT16_COUNT) return -2;
 
   uint16_t addr = VARS_START_ADDR + (var_num - 1) * 2;
-  uint8_t low, high;
+  uint8_t data[2];
 
-  if (eeprom_read_byte(addr, &low) != 0) return -1;
-  if (eeprom_read_byte(addr + 1, &high) != 0) return -1;
+  if (eeprom_read_page(addr, data, 2) != 0) return -1;
 
-  *value = ((uint16_t)high << 8) | low;
+  *value = ((uint16_t)data[1] << 8) | data[0];
   return 0;
 }
 
-
-// Очищает все 20 переменных (записывает 0xFFFF)
-// ret 0 — успех, -1 — ошибка записи
 int eeprom_clear_all_uint16_vars(void) {
+  uint8_t clear_data[2] = {0xFF, 0xFF};
+  
   for (uint16_t i = 1; i <= VAR_UINT16_COUNT; i++) {
     uint16_t addr = VARS_START_ADDR + (i - 1) * 2;
-    if (eeprom_write_byte(addr, 0xFF) != 0) return -1;
-    if (eeprom_write_byte(addr + 1, 0xFF) != 0) return -1;
+    if (eeprom_write_page(addr, clear_data, 2) != 0) return -1;
   }
   return 0;
 }
-
-// Eof eeprom.c

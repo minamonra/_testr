@@ -28,6 +28,31 @@ extern volatile uint8_t selected_index_enc; // счётчик энкодера (
 extern void (*encoder_callback)(uint8_t new_value, int8_t direction);
 extern void update_button_state(void);
 
+
+void iwdg_setup(void){
+    uint32_t tmout = 16000000;
+    /* Enable the peripheral clock RTC */
+    /* (1) Enable the LSI (40kHz) */
+    /* (2) Wait while it is not ready */
+    RCC->CSR |= RCC_CSR_LSION; /* (1) */
+    while((RCC->CSR & RCC_CSR_LSIRDY) != RCC_CSR_LSIRDY){if(--tmout == 0) break;} /* (2) */
+    /* Configure IWDG */
+    /* (1) Activate IWDG (not needed if done in option bytes) */
+    /* (2) Enable write access to IWDG registers */
+    /* (3) Set prescaler by 64 (1.6ms for each tick) */
+    /* (4) Set reload value to have a rollover each 2s */
+    /* (5) Check if flags are reset */
+    /* (6) Refresh counter */
+    IWDG->KR = IWDG_START; /* (1) */
+    IWDG->KR = IWDG_WRITE_ACCESS; /* (2) */
+    IWDG->PR = IWDG_PR_PR_1; /* (3) */
+    IWDG->RLR = 1250; /* (4) */
+    tmout = 16000000;
+    while(IWDG->SR){if(--tmout == 0) break;} /* (5) */
+    IWDG->KR = IWDG_REFRESH; /* (6) */
+}
+
+
 void hardware_init(void) {
   RCC->APB2ENR |= RCC_APB2ENR_IOPAEN | RCC_APB2ENR_IOPBEN | 
                   RCC_APB2ENR_IOPCEN | RCC_APB2ENR_AFIOEN;
@@ -250,6 +275,7 @@ void blink_pc14led(uint16_t freq)
   {
     LED1TOGGLE;
     pc14ms = ttms;
+    
   }
 }
 

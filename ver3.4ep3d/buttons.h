@@ -2,6 +2,7 @@
 #define __BUTTONS_H__
 #include "stm32f10x.h"
 
+
 // Определения состояния кнопки
 typedef enum { BTN_RELEASED = 0, BTN_PRESSED = 1 } button_state;
 

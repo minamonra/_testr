@@ -626,12 +626,14 @@ int main(void) {
     
     rs485_send_string_with_params(brightness, '#', '#', cp1251_to_utf8_alloc(display_string));
     eeprom_write_uint16_by_num(EELASTUSEDCELL, selected_index_enc);
-    
+    iwdg_setup();
     // Основной цикл программы
     while (1) {
         display_process();   // Обработка отображения
         // Колбек энкодера идёт из SysTick в common.c
         //blink_pc13led(1000);
         blink_pc14led(1000);
+        IWDG->KR = IWDG_REFRESH; // refresh watchdog
+        //IWDG->KR = IWDG_REFRESH; // refresh watchdog перенёс пока в blink_pc14led
     }
 }

@@ -4,6 +4,12 @@
 #include "stm32f10x.h"
 #include <stddef.h>
 
+/************************* IWDG *************************/
+#define IWDG_REFRESH      (uint32_t)(0x0000AAAA)
+#define IWDG_WRITE_ACCESS (uint32_t)(0x00005555)
+#define IWDG_START        (uint32_t)(0x0000CCCC)
+void iwdg_setup(void);
+
 extern const unsigned char cp1251_chars[];
 
 #define LED1TOGGLE GPIOC->ODR ^= (1<<13)

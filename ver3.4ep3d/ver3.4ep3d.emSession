@@ -55,10 +55,11 @@
   <Watches active="0" update="Never"/>
  </Watch4>
  <Files>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="174" useTextEdit="1" path="main.c" left="0" selected="1" top="231" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="21" y="634" useTextEdit="1" path="main.c" left="0" selected="1" top="598" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="6" y="193" useTextEdit="1" path="rs485.c" left="0" top="175" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="1" y="260" useTextEdit="1" path="common.c" left="0" top="252" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="1" y="260" useTextEdit="1" path="common.c" left="0" top="224" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="1849" useTextEdit="1" path="CMSIS_5/CMSIS/Core/Include/core_cm3.h" left="0" top="1824" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="1" y="274" useTextEdit="1" path="eeprom.c" left="0" top="238" codecName="Default"/>
  </Files>
- <EMStudioWindow activeProject="ver3.4ep3d" fileDialogDefaultFilter="*.c;*.h" autoConnectTarget="J-Link" buildConfiguration="Debug" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="C:/_GitHub/P10mono/segger/ver3.4ep3d" debugSearchPath="" autoConnectCapabilities="3711"/>
+ <EMStudioWindow activeProject="ver3.4ep3d" fileDialogDefaultFilter="*.c;*.h" autoConnectTarget="J-Link" buildConfiguration="Debug" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="C:/_GitHub/P10mono/segger/ver3.4ep3d" debugSearchPath="" autoConnectCapabilities="3199"/>
 </session>

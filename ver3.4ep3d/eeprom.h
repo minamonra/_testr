@@ -3,7 +3,12 @@
 #include <stdint.h>
 
 #define EEPROM_ADDR 0xA0 // Дефолтный адрес 24C32 без резисторов
+// Изменяем размеры согласно требованиям
+#define STRING_SIZE 32      // Было 16
+#define MAX_STRINGS 100     // Было 200
 
+//#define STRING_SIZE 16
+//#define MAX_STRINGS 200
 int eeprom_write_byte(uint16_t addr, uint8_t data);
 int eeprom_read_byte(uint16_t addr, uint8_t *data);
 int eeprom_write_string(uint16_t addr, const char *str);
