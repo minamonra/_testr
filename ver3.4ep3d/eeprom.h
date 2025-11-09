@@ -3,12 +3,10 @@
 #include <stdint.h>
 
 #define EEPROM_ADDR 0xA0 // Дефолтный адрес 24C32 без резисторов
-// Изменяем размеры согласно требованиям
-#define STRING_SIZE 32      // Было 16
-#define MAX_STRINGS 100     // Было 200
+// Добавляем прототип функции I2C_WaitEvent, если она определена где-то еще
+int I2C_WaitEvent(uint32_t event);
 
-//#define STRING_SIZE 16
-//#define MAX_STRINGS 200
+
 int eeprom_write_byte(uint16_t addr, uint8_t data);
 int eeprom_read_byte(uint16_t addr, uint8_t *data);
 int eeprom_write_string(uint16_t addr, const char *str);
@@ -20,5 +18,6 @@ int eeprom_read_uint16_by_num(uint16_t var_num, uint16_t *value);
 int eeprom_clear_string(uint16_t string_num);
 int eeprom_clear_all_strings(void);
 int eeprom_clear_all_uint16_vars(void);
+
 
 #endif // __EEPROM_H__
