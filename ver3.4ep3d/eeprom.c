@@ -2,7 +2,7 @@
 #include "eeprom.h"
 
 #define EEPROM_SIZE 4096
-#define STRING_SIZE 32        // Изменено с 16 на 32
+#define STRING_SIZE 33        // Изменено с 16 на 32
 #define MAX_STRINGS 100       // Изменено с 200 на 100
 #define VAR_UINT16_COUNT 20
 #define EEPROM_PAGE_SIZE 32
