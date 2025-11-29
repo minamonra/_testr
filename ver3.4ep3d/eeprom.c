@@ -226,48 +226,45 @@ int eeprom_read_string(uint16_t addr, char *str) {
 // string_num Номер строки (0..MAX_STRINGS-1)
 // str Строка для записи
 // ret 0 — успех, -1 — ошибка записи, -2 — номер строки вне диапазона
-int eeprom_write_string_by_num(uint16_t num, const char *data) {
+int eeprom_write_string_by_num(uint16_t num, const char *data)
+{
+    if (!data) return -1;  // вместо ERR_PARAM
+
     uint16_t addr = num * STRING_SIZE;
     uint8_t buf[STRING_SIZE];
+
     for (int i = 0; i < STRING_SIZE; i++) {
-        buf[i] = (i < 32 && data[i]) ? data[i] : ' ';
+        buf[i] = data[i];  // копируем все байты, включая нули
     }
+
     return eeprom_write_page(addr, buf, STRING_SIZE);
 }
-
 // Чтение строки по номеру с постраничным чтением
 // string_num Номер строки (0..MAX_STRINGS-1)
 // str Буфер для строки (минимум STRING_SIZE байт)
 // ret 0 — успех, -1 — ошибка чтения, -2 — номер строки вне диапазона
-int eeprom_read_string_by_num(uint16_t string_num, char *str) {
-  if (str == NULL) return -1;
-  if (string_num >= MAX_STRINGS) return -2;
+int eeprom_read_string_by_num(uint16_t string_num, char *str)
+{
+    if (!str) return -1;                    // проверка на NULL
+    if (string_num >= MAX_STRINGS) return -2; // проверка выхода за границы
 
-  uint16_t addr = string_num * STRING_SIZE;
-  uint8_t buffer[STRING_SIZE];
+    uint16_t addr = string_num * STRING_SIZE;
+    uint8_t buffer[STRING_SIZE];
 
-  if (eeprom_read_page(addr, buffer, STRING_SIZE) != 0) {
-    // при ошибке вернём пустую строку из пробелов
-    for (int i = 0; i < STRING_SIZE; i++) str[i] = ' ';
-    str[STRING_SIZE - 1] = '\0';
-    return -1;
-  }
-
-  // Заполняем ровно STRING_SIZE-1 (=32-1) байт, но у нас STRING_SIZE==32: хотим 32 видимых символа + '\0'
-  for (uint16_t i = 0; i < STRING_SIZE; i++) {
-    if (buffer[i] == 0xFF) {
-      str[i] = ' ';
-    } else if (buffer[i] == 0x00) {
-      // Если в памяти неожиданно 0x00 — также считаем это пробел, чтобы внутри фиксированного блока не было преждевременного конца строки
-      str[i] = ' ';
-    } else {
-      str[i] = (char)buffer[i];
+    if (eeprom_read_page(addr, buffer, STRING_SIZE) != 0) {
+        // при ошибке чтения возвращаем пустую строку (только для main.c)
+        for (int i = 0; i < STRING_SIZE; i++) str[i] = ' ';
+        str[STRING_SIZE] = '\0';
+        return -1;
     }
-  }
 
-  // Установим единственный терминатор
-  str[STRING_SIZE] = '\0'; // т.е. str[32] = '\0'
-  return 0;
+    // Копируем байты как есть
+    for (int i = 0; i < STRING_SIZE; i++) str[i] = buffer[i];
+
+    // Терминатор добавляем только для работы в main.c
+    str[STRING_SIZE] = '\0';
+
+    return 0;
 }
 
 // Очищает строку в EEPROM (записывает все байты как 0xFF)
@@ -370,6 +367,38 @@ int eeprom_clear_all_uint16_vars(void) {
     delay_simple(1000);
   }
   return 0;
+}
+
+#include  "stdlib.h"
+#define		_EEPROM_SIZE_KBIT		32       /* 256K (32,768 x 8) */
+#define		_EEPROM_ADDRESS			0xA0
+#if (_EEPROM_SIZE_KBIT == 1) || (_EEPROM_SIZE_KBIT == 2)
+#define _EEPROM_PSIZE     8
+#elif (_EEPROM_SIZE_KBIT == 4) || (_EEPROM_SIZE_KBIT == 8) || (_EEPROM_SIZE_KBIT == 16)
+#define _EEPROM_PSIZE     16
+#else
+#define _EEPROM_PSIZE     32
+#endif
+
+/**
+  * @brief  Checks if memory device is ready for communication.
+  * @param  none
+  * @retval bool
+  */
+uint8_t at24_isConnected(void);
+uint8_t at24_write(uint16_t address, uint8_t *data, size_t lenInBytes, uint32_t timeout);
+uint8_t at24_eraseChip(void)
+{
+  const uint8_t eraseData[32] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF\
+    , 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+  uint32_t bytes = 0;
+  while ( bytes < (_EEPROM_SIZE_KBIT * 128))
+  {
+    if (at24_write(bytes, (uint8_t*)eraseData, sizeof(eraseData), 100) != 0)
+      return -1;
+    bytes += sizeof(eraseData);           
+  }
+  return 0;  
 }
 
 // Eof eeprom.c

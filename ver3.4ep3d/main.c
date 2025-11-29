@@ -27,6 +27,7 @@ typedef enum {
 #define MSGSHOWTNS            600 // Время показа сообщения в миллисекундах
 #define EDIT_TIMEOUT_MS     50000 // Таймаут редактирования
 #define NORMMODE_TIMEOUT_MS 50000 // Таймаут бездействия в нормальном режиме
+#define DISPUPDATETIME         40
 
 // Адреса в EEPROM
 #define EEBRIGHTNESS   1   // Ячейка для хранения яркости
@@ -35,7 +36,7 @@ typedef enum {
 #define EENEED2SAVEON  4   // Задумана как нужность сохранения в памяти панели последнего посланного текста
 
 // Параметры редактирования
-#define EDTSTRLEN        17  // Длина редактируемой строки для отображения (16 символов + терминатор)
+#define EDTSTRLEN        15  // Длина редактируемой строки для отображения (16 символов + терминатор)
 #define EDTMODMAXCNT     55  // Максимальное значение для режима редактирования
 #define MAXCELLEEPROMUSE 50  // Максимальное количество ячеек EEPROM
 #define MAX_BRIGHTNESS   9   // Максимальная яркость
@@ -102,7 +103,7 @@ static const char messages[MSG_COUNT][32] = {
     [MSG_VERSION]          = PULTVERSION,
     [MSG_EDIT_CELL]        = "Ред яч:",
     [MSG_CELL]             = "Яч:",
-    [MSG_BRIGHTNESS_SHORT] = " Ярк:",
+    [MSG_BRIGHTNESS_SHORT] = " Яр:",
     [MSG_BRIGHTNESS_FULL]  = "Яркость: ",
     [MSG_SETUP]            = "Уст:",
     [MSG_ERR_READ]         = "Err read",
@@ -516,7 +517,7 @@ volatile uint8_t force_display_update = 0;
 
 // Основная функция отрисовки интерфейса
 void display_process(void) {
-    if (lcdms > ttms || ttms - lcdms > 20) {
+    if (lcdms > ttms || ttms - lcdms > DISPUPDATETIME) {
         // Проверяем изменение режима для полной перерисовки
         if (display_mode != last_display_mode) {
             lcdClear();
@@ -542,7 +543,7 @@ void display_process(void) {
                     lcdClear();
                     cached_eeprom_read_string(selected_index_enc, display_string);
                     lcdString16(display_string, 1);
-                    lcdms = ttms - 21; // Принудительное обновление на следующем цикле
+                    lcdms = ttms - (DISPUPDATETIME + 1); // Принудительное обновление на следующем цикле
                 } else {
                     // Показ сообщения
                     lcdSetCursorB(0, 0, 0);
@@ -608,6 +609,7 @@ void display_process(void) {
                 break;
         }
         lcdms = ttms;
+        IWDG->KR = IWDG_REFRESH; // refresh watchdog
     }
 }
 
@@ -703,6 +705,6 @@ int main(void) {
         display_process();   // Обработка отображения
         // Колбек энкодера идёт из SysTick в common.c
         blink_pc14led(1000);
-        IWDG->KR = IWDG_REFRESH; // refresh watchdog
+        
     }
 }
