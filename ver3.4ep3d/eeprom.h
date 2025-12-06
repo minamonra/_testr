@@ -2,7 +2,7 @@
 #define __EEPROM_H__
 #include <stdint.h>
 
-#define EEPROM_ADDR 0xA0 // Дефолтный адрес 24C32 без резисторов
+#define EEPROM_ADDR 0xA0 // Дефолтный адрес 24C32/24C64 без резисторов
 // Добавляем прототип функции I2C_WaitEvent, если она определена где-то еще
 int I2C_WaitEvent(uint32_t event);
 
