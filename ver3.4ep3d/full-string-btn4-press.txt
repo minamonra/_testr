@@ -1,0 +1,134 @@
+В вашем коде для отправки данных через RS485 отправляется только одна 
+часть строки, поскольку каждая часть строки (первая или вторая) 
+отображается и обрабатывается отдельно. Для того чтобы отправить обе 
+под-ячейки как единую строку, необходимо немного изменить подход к 
+отправке данных.
+
+Основная проблема заключается в том, что строка делится на две части, 
+и когда нужно отправить данные, отправляется только текущая часть. 
+Для отправки всей строки нужно объединить обе части перед отправкой.
+
+Изменения:
+
+Нужно изменить часть кода, которая отправляет данные через RS485. 
+Для этого нужно собрать полную строку (первая и вторая части) в один 
+буфер, а затем передать этот буфер.
+
+Потребуется скорректировать функцию btn_press_handler4 (или ту, которая 
+отправляет данные через RS485), чтобы она отправляла обе части строки.
+
+Пример исправления:
+
+Объединение двух частей строки:
+В функции btn_press_handler4, перед отправкой данных через RS485, нужно 
+объединить две части строки в одну и отправить их.
+
+
+
+// Короткое нажатие кнопки 4 (Send, Ok)
+void btn_press_handler4(void) {
+    if (display_mode == DSCREENSAVER) {
+        exit_screensaver();
+        return;
+    }
+
+    switch (display_mode) {
+        case DEDITMODE:
+            update_edit_activity_time();
+            // Сохранение отредактированной строки
+            display_mode = SHOWMSG;
+            max_selected_index_enc = MAXCELLEEPROMUSE;
+            selected_index_enc = current_sell_ed;
+            trim_and_clean_string(editing_string, EDTSTRLEN);
+
+            // Сохраняем в соответствующую часть строки
+            char temp_full_string[33] = {0};
+
+            // Сначала читаем текущую полную строку из EEPROM
+            if (cached_eeprom_read_string(selected_index_enc, temp_full_string) != ERR_OK) {
+                // Если не удалось прочитать, используем текущий display_string
+                safe_strncpy(temp_full_string, display_string, 32);
+            } else {
+                // защита от преждевременного '\0' внутри первой половины
+                for (int i = 0; i < 32; i++) {
+                    if (temp_full_string[i] == '\0' || temp_full_string[i] == 0x00) {
+                        temp_full_string[i] = ' ';
+                    }
+                }
+                temp_full_string[32] = '\0';
+            }
+
+            if (editing_part == 0) {
+                // Сохраняем в первую часть (символы 0-15)
+                // Копируем только 16 символов, не трогая остальные
+                for (int i = 0; i < 16 && i < EDTSTRLEN; i++) {
+                    temp_full_string[i] = editing_string[i];
+                }
+            } else {
+                // Сохраняем во вторую часть (символы 16-31)
+                for (int i = 0; i < 16 && i < EDTSTRLEN; i++) {
+                    temp_full_string[16 + i] = editing_string[i];
+                }
+            }
+
+            // Гарантируем, что строка имеет правильную длину
+            temp_full_string[32] = '\0';
+
+            eeprom_write_string_by_num(selected_index_enc, temp_full_string);
+            invalidate_eeprom_cache(selected_index_enc);
+
+            // Обновляем display_string для отображения
+            safe_strncpy(display_string, temp_full_string, 32);
+            display_string[32] = '\0';
+
+            lcdClearViaChars();
+            safe_strncpy(msg_text, messages[MSG_WOW_NICE], sizeof(msg_text));
+            msg_start_time = ttms;
+            msg_active = 1;
+            break;
+
+        case DNORMMODE:
+            update_norm_mode_activity_time();
+            // Отправка данных через RS485 - отправляем полную строку
+            char full_string[33] = {0};
+            get_display_part(full_string);  // Первая часть
+            strcat(full_string, display_string + 16);  // Вторая часть
+
+            rs485_send_string_with_params(brightness, '#', '#', cp1251_to_utf8_alloc(full_string));
+            eeprom_write_uint16_by_num(EELASTUSEDCELL, selected_index_enc);
+            break;
+
+        case DBRIGHTMODE:
+            update_bright_activity_time();
+            // Сохранение новой настройки яркости
+            brightness = selected_index_enc;
+            display_mode = SHOWMSG;
+            max_selected_index_enc = MAXCELLEEPROMUSE;
+            selected_index_enc = (selected_index_enc > max_selected_index_enc) ? 0 : last_show_editing_cell;
+            eeprom_write_uint16_by_num(EEBRIGHTNESS, brightness);
+            lcdClearViaChars();
+            safe_strncpy(msg_text, messages[MSG_AMAZING_BRIGHT], sizeof(msg_text));
+            msg_start_time = ttms;
+            msg_active = 1;
+            break;
+
+        default:
+            break;
+    }
+}
+
+
+
+
+Пояснение изменений:
+Объединение строк: Когда мы находимся в нормальном режиме (DNORMMODE), 
+то для отправки данных через RS485 сначала собираем обе части строки: 
+первую часть с помощью get_display_part(full_string), затем добавляем 
+вторую часть, начиная с 16-го символа строки display_string.
+
+Отправка полной строки: После объединения двух частей строки в 
+переменную full_string, мы отправляем эту строку через 
+rs485_send_string_with_params.
+
+Теперь, при отправке данных через RS485 будет отправляться полная 
+строка, содержащая обе под-ячейки (первую и вторую).

@@ -5,8 +5,8 @@
 // PA15-RS PB3-E PB4-D4 PB5-D5 PB8-D6 PB9-D7
 // === Макросы для управления пинами дисплея ===
 // RS = PA15
-#define RS1 GPIOA->BSRR |= GPIO_BSRR_BS15 // set (1)
-#define RS0 GPIOA->BSRR |= GPIO_BSRR_BR15 // reset (0)
+#define RS1 GPIOA->BSRR |= GPIO_BSRR_BS15    // set (1)
+#define RS0 GPIOA->BSRR |= GPIO_BSRR_BR15    // reset (0)
 // E (en) = PB3
 #define EN1 GPIOB->BSRR |= GPIO_BSRR_BS3
 #define EN0 GPIOB->BSRR |= GPIO_BSRR_BR3
@@ -38,10 +38,10 @@ void lcdClear(void);
 void lcdPrintUtf8(const char *s, uint8_t line);
 void lcdString16(const char *s, uint8_t line);
 void lcdString16_with_brackets(const char *s, uint8_t line);
-char* my_itoa(int32_t num, char *str, uint8_t base);
+char *my_itoa(int32_t num, char *str, uint8_t base);
 void lcdPrintTwoDigitNumber(int num);
 void lcdClearViaChars(void);
 void lcdData(uint8_t data);
 void lcdLoadCustomChar(uint8_t char_num, const uint8_t *pattern);
 
-#endif // __DISPMT16S_H__
+#endif    // __DISPMT16S_H__

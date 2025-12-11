@@ -2,7 +2,6 @@
 #define CP1251_CHARS_H
 // Символы для редактора на дисплее
 
-
 // Старая
 const unsigned char cp1251_chars1[] = {
   0xC0,0xC1,0xC2,0xC3,0xC4,0xC5,0xC6,0xC7, // А-Я

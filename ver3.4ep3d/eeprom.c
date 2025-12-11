@@ -1,9 +1,9 @@
-#include "stm32f10x.h"
 #include "eeprom.h"
+#include "stm32f10x.h"
 
 #define EEPROM_SIZE 4096
-#define STRING_SIZE 33        // Изменено с 16 на 32
-#define MAX_STRINGS 100       // Изменено с 200 на 100
+#define STRING_SIZE 33     // Изменено с 16 на 32
+#define MAX_STRINGS 100    // Изменено с 200 на 100
 #define VAR_UINT16_COUNT 20
 #define EEPROM_PAGE_SIZE 32
 #define WAITCNT 5000
@@ -30,23 +30,29 @@ int I2C_WaitEvent(uint32_t event) {
 
 // Запись байта в EEPROM
 int eeprom_write_byte(uint16_t addr, uint8_t data) {
-  while (I2C1->SR2 & I2C_SR2_BUSY);
+  while (I2C1->SR2 & I2C_SR2_BUSY)
+    ;
 
   I2C1->CR1 |= I2C_CR1_START;
-  if (!I2C_WaitEvent(I2C_SR1_SB)) return -1;
+  if (!I2C_WaitEvent(I2C_SR1_SB))
+    return -1;
 
   I2C1->DR = EEPROM_ADDR;
-  if (!I2C_WaitEvent(I2C_SR1_ADDR)) return -1;
+  if (!I2C_WaitEvent(I2C_SR1_ADDR))
+    return -1;
   (void)I2C1->SR2;
 
   I2C1->DR = (addr >> 8) & 0xFF;
-  if (!I2C_WaitEvent(I2C_SR1_TXE)) return -1;
+  if (!I2C_WaitEvent(I2C_SR1_TXE))
+    return -1;
 
   I2C1->DR = addr & 0xFF;
-  if (!I2C_WaitEvent(I2C_SR1_TXE)) return -1;
+  if (!I2C_WaitEvent(I2C_SR1_TXE))
+    return -1;
 
   I2C1->DR = data;
-  if (!I2C_WaitEvent(I2C_SR1_TXE)) return -1;
+  if (!I2C_WaitEvent(I2C_SR1_TXE))
+    return -1;
 
   I2C1->CR1 |= I2C_CR1_STOP;
   // Простейшая задержка для записи EEPROM
@@ -56,33 +62,40 @@ int eeprom_write_byte(uint16_t addr, uint8_t data) {
 
 // Запись страницы в EEPROM (последовательная запись нескольких байт)
 int eeprom_write_page(uint16_t addr, uint8_t *data, uint16_t len) {
-  if (len == 0) return 0;
-  
+  if (len == 0)
+    return 0;
+
   // Проверяем, чтобы запись не выходила за границу страницы
   uint16_t page_boundary = (addr / EEPROM_PAGE_SIZE + 1) * EEPROM_PAGE_SIZE;
   if (addr + len > page_boundary) {
-    len = page_boundary - addr;  // Ограничиваем длину записи
+    len = page_boundary - addr;    // Ограничиваем длину записи
   }
 
-  while (I2C1->SR2 & I2C_SR2_BUSY);
+  while (I2C1->SR2 & I2C_SR2_BUSY)
+    ;
 
   I2C1->CR1 |= I2C_CR1_START;
-  if (!I2C_WaitEvent(I2C_SR1_SB)) return -1;
+  if (!I2C_WaitEvent(I2C_SR1_SB))
+    return -1;
 
   I2C1->DR = EEPROM_ADDR;
-  if (!I2C_WaitEvent(I2C_SR1_ADDR)) return -1;
+  if (!I2C_WaitEvent(I2C_SR1_ADDR))
+    return -1;
   (void)I2C1->SR2;
 
   I2C1->DR = (addr >> 8) & 0xFF;
-  if (!I2C_WaitEvent(I2C_SR1_TXE)) return -1;
+  if (!I2C_WaitEvent(I2C_SR1_TXE))
+    return -1;
 
   I2C1->DR = addr & 0xFF;
-  if (!I2C_WaitEvent(I2C_SR1_TXE)) return -1;
+  if (!I2C_WaitEvent(I2C_SR1_TXE))
+    return -1;
 
   // Записываем все байты страницы
   for (uint16_t i = 0; i < len; i++) {
     I2C1->DR = data[i];
-    if (!I2C_WaitEvent(I2C_SR1_TXE)) return -1;
+    if (!I2C_WaitEvent(I2C_SR1_TXE))
+      return -1;
   }
 
   I2C1->CR1 |= I2C_CR1_STOP;
@@ -93,31 +106,39 @@ int eeprom_write_page(uint16_t addr, uint8_t *data, uint16_t len) {
 
 // Чтение байта из EEPROM
 int eeprom_read_byte(uint16_t addr, uint8_t *data) {
-  while (I2C1->SR2 & I2C_SR2_BUSY);
+  while (I2C1->SR2 & I2C_SR2_BUSY)
+    ;
 
   I2C1->CR1 |= I2C_CR1_START;
-  if (!I2C_WaitEvent(I2C_SR1_SB)) return -1;
+  if (!I2C_WaitEvent(I2C_SR1_SB))
+    return -1;
 
   I2C1->DR = EEPROM_ADDR;
-  if (!I2C_WaitEvent(I2C_SR1_ADDR)) return -1;
+  if (!I2C_WaitEvent(I2C_SR1_ADDR))
+    return -1;
   (void)I2C1->SR2;
 
   I2C1->DR = (addr >> 8) & 0xFF;
-  if (!I2C_WaitEvent(I2C_SR1_TXE)) return -1;
+  if (!I2C_WaitEvent(I2C_SR1_TXE))
+    return -1;
 
   I2C1->DR = addr & 0xFF;
-  if (!I2C_WaitEvent(I2C_SR1_TXE)) return -1;
+  if (!I2C_WaitEvent(I2C_SR1_TXE))
+    return -1;
 
   I2C1->CR1 |= I2C_CR1_START;
-  if (!I2C_WaitEvent(I2C_SR1_SB)) return -1;
+  if (!I2C_WaitEvent(I2C_SR1_SB))
+    return -1;
 
   I2C1->DR = EEPROM_ADDR | 1;
-  if (!I2C_WaitEvent(I2C_SR1_ADDR)) return -1;
+  if (!I2C_WaitEvent(I2C_SR1_ADDR))
+    return -1;
   (void)I2C1->SR2;
 
   I2C1->CR1 &= ~I2C_CR1_ACK;
 
-  if (!I2C_WaitEvent(I2C_SR1_RXNE)) return -1;
+  if (!I2C_WaitEvent(I2C_SR1_RXNE))
+    return -1;
 
   *data = I2C1->DR;
 
@@ -129,28 +150,36 @@ int eeprom_read_byte(uint16_t addr, uint8_t *data) {
 
 // Чтение страницы из EEPROM (последовательное чтение нескольких байт)
 int eeprom_read_page(uint16_t addr, uint8_t *data, uint16_t len) {
-  if (len == 0) return 0;
+  if (len == 0)
+    return 0;
 
-  while (I2C1->SR2 & I2C_SR2_BUSY);
+  while (I2C1->SR2 & I2C_SR2_BUSY)
+    ;
 
   I2C1->CR1 |= I2C_CR1_START;
-  if (!I2C_WaitEvent(I2C_SR1_SB)) return -1;
+  if (!I2C_WaitEvent(I2C_SR1_SB))
+    return -1;
 
   I2C1->DR = EEPROM_ADDR;
-  if (!I2C_WaitEvent(I2C_SR1_ADDR)) return -1;
+  if (!I2C_WaitEvent(I2C_SR1_ADDR))
+    return -1;
   (void)I2C1->SR2;
 
   I2C1->DR = (addr >> 8) & 0xFF;
-  if (!I2C_WaitEvent(I2C_SR1_TXE)) return -1;
+  if (!I2C_WaitEvent(I2C_SR1_TXE))
+    return -1;
 
   I2C1->DR = addr & 0xFF;
-  if (!I2C_WaitEvent(I2C_SR1_TXE)) return -1;
+  if (!I2C_WaitEvent(I2C_SR1_TXE))
+    return -1;
 
   I2C1->CR1 |= I2C_CR1_START;
-  if (!I2C_WaitEvent(I2C_SR1_SB)) return -1;
+  if (!I2C_WaitEvent(I2C_SR1_SB))
+    return -1;
 
   I2C1->DR = EEPROM_ADDR | 1;
-  if (!I2C_WaitEvent(I2C_SR1_ADDR)) return -1;
+  if (!I2C_WaitEvent(I2C_SR1_ADDR))
+    return -1;
   (void)I2C1->SR2;
 
   // Читаем несколько байт последовательно
@@ -163,12 +192,13 @@ int eeprom_read_page(uint16_t addr, uint8_t *data, uint16_t len) {
       I2C1->CR1 |= I2C_CR1_ACK;
     }
 
-    if (!I2C_WaitEvent(I2C_SR1_RXNE)) return -1;
+    if (!I2C_WaitEvent(I2C_SR1_RXNE))
+      return -1;
     data[i] = I2C1->DR;
   }
 
   I2C1->CR1 |= I2C_CR1_STOP;
-  I2C1->CR1 |= I2C_CR1_ACK;  // Восстанавливаем ACK для следующих операций
+  I2C1->CR1 |= I2C_CR1_ACK;    // Восстанавливаем ACK для следующих операций
 
   return 0;
 }
@@ -179,14 +209,14 @@ int eeprom_read_page(uint16_t addr, uint8_t *data, uint16_t len) {
 // ret 0 в случае успеха, -1 при ошибке
 int eeprom_write_string(uint16_t addr, const char *str) {
   uint8_t buffer[STRING_SIZE] = {0};
-  uint16_t i = 0;
+  uint16_t i                  = 0;
 
   // Копируем строку в буфер
   while (i < STRING_SIZE - 1 && str[i] != '\0') {
     buffer[i] = (uint8_t)str[i];
     i++;
   }
-  
+
   // Гарантируем нулевой терминатор
   buffer[i] = '\0';
 
@@ -226,55 +256,59 @@ int eeprom_read_string(uint16_t addr, char *str) {
 // string_num Номер строки (0..MAX_STRINGS-1)
 // str Строка для записи
 // ret 0 — успех, -1 — ошибка записи, -2 — номер строки вне диапазона
-int eeprom_write_string_by_num(uint16_t num, const char *data)
-{
-    if (!data) return -1;  // вместо ERR_PARAM
+int eeprom_write_string_by_num(uint16_t num, const char *data) {
+  if (!data)
+    return -1;    // вместо ERR_PARAM
 
-    uint16_t addr = num * STRING_SIZE;
-    uint8_t buf[STRING_SIZE];
+  uint16_t addr = num * STRING_SIZE;
+  uint8_t buf[STRING_SIZE];
 
-    for (int i = 0; i < STRING_SIZE; i++) {
-        buf[i] = data[i];  // копируем все байты, включая нули
-    }
+  for (int i = 0; i < STRING_SIZE; i++) {
+    buf[i] = data[i];    // копируем все байты, включая нули
+  }
 
-    return eeprom_write_page(addr, buf, STRING_SIZE);
+  return eeprom_write_page(addr, buf, STRING_SIZE);
 }
 // Чтение строки по номеру с постраничным чтением
 // string_num Номер строки (0..MAX_STRINGS-1)
 // str Буфер для строки (минимум STRING_SIZE байт)
 // ret 0 — успех, -1 — ошибка чтения, -2 — номер строки вне диапазона
-int eeprom_read_string_by_num(uint16_t string_num, char *str)
-{
-    if (!str) return -1;                    // проверка на NULL
-    if (string_num >= MAX_STRINGS) return -2; // проверка выхода за границы
+int eeprom_read_string_by_num(uint16_t string_num, char *str) {
+  if (!str)
+    return -1;    // проверка на NULL
+  if (string_num >= MAX_STRINGS)
+    return -2;    // проверка выхода за границы
 
-    uint16_t addr = string_num * STRING_SIZE;
-    uint8_t buffer[STRING_SIZE];
+  uint16_t addr = string_num * STRING_SIZE;
+  uint8_t buffer[STRING_SIZE];
 
-    if (eeprom_read_page(addr, buffer, STRING_SIZE) != 0) {
-        // при ошибке чтения возвращаем пустую строку (только для main.c)
-        for (int i = 0; i < STRING_SIZE; i++) str[i] = ' ';
-        str[STRING_SIZE] = '\0';
-        return -1;
-    }
-
-    // Копируем байты как есть
-    for (int i = 0; i < STRING_SIZE; i++) str[i] = buffer[i];
-
-    // Терминатор добавляем только для работы в main.c
+  if (eeprom_read_page(addr, buffer, STRING_SIZE) != 0) {
+    // при ошибке чтения возвращаем пустую строку (только для main.c)
+    for (int i = 0; i < STRING_SIZE; i++)
+      str[i] = ' ';
     str[STRING_SIZE] = '\0';
+    return -1;
+  }
 
-    return 0;
+  // Копируем байты как есть
+  for (int i = 0; i < STRING_SIZE; i++)
+    str[i] = buffer[i];
+
+  // Терминатор добавляем только для работы в main.c
+  str[STRING_SIZE] = '\0';
+
+  return 0;
 }
 
 // Очищает строку в EEPROM (записывает все байты как 0xFF)
 // string_num Номер строки (0..MAX_STRINGS-1)
 // ret 0 — успех, -1 — ошибка записи, -2 — номер строки вне диапазона
 int eeprom_clear_string(uint16_t string_num) {
-  if (string_num >= MAX_STRINGS) return -2;
+  if (string_num >= MAX_STRINGS)
+    return -2;
 
   uint16_t addr = string_num * STRING_SIZE;
-  
+
   // Очищаем побайтово - это надежнее для EEPROM
   for (uint16_t i = 0; i < STRING_SIZE; i++) {
     if (eeprom_write_byte(addr + i, 0xFF) != 0) {
@@ -283,7 +317,7 @@ int eeprom_clear_string(uint16_t string_num) {
     // Небольшая задержка между байтами
     delay_simple(1000);
   }
-  
+
   return 0;
 }
 
@@ -291,7 +325,8 @@ int eeprom_clear_string(uint16_t string_num) {
 // string_num Номер строки (0..MAX_STRINGS-1)
 // ret 1 — данные есть, 0 — пусто, -1 — ошибка чтения, -2 — номер строки вне диапазона
 int eeprom_is_string_used(uint16_t string_num) {
-  if (string_num >= MAX_STRINGS) return -2;
+  if (string_num >= MAX_STRINGS)
+    return -2;
 
   uint16_t addr = string_num * STRING_SIZE;
   uint8_t buffer[STRING_SIZE];
@@ -326,9 +361,10 @@ int eeprom_clear_all_strings(void) {
 // value Значение для записи
 // ret 0 — успех, -1 — ошибка записи, -2 — номер вне диапазона
 int eeprom_write_uint16_by_num(uint16_t var_num, uint16_t value) {
-  if (var_num == 0 || var_num > VAR_UINT16_COUNT) return -2;
+  if (var_num == 0 || var_num > VAR_UINT16_COUNT)
+    return -2;
 
-  uint16_t addr = VARS_START_ADDR + (var_num - 1) * 2;
+  uint16_t addr     = VARS_START_ADDR + (var_num - 1) * 2;
   uint8_t buffer[2] = {(uint8_t)(value & 0xFF), (uint8_t)((value >> 8) & 0xFF)};
 
   // Записываем оба байта одной страницей
@@ -340,13 +376,15 @@ int eeprom_write_uint16_by_num(uint16_t var_num, uint16_t value) {
 // value Указатель для сохранения результата
 // ret 0 — успех, -1 — ошибка чтения, -2 — номер вне диапазона
 int eeprom_read_uint16_by_num(uint16_t var_num, uint16_t *value) {
-  if (var_num == 0 || var_num > VAR_UINT16_COUNT) return -2;
+  if (var_num == 0 || var_num > VAR_UINT16_COUNT)
+    return -2;
 
   uint16_t addr = VARS_START_ADDR + (var_num - 1) * 2;
   uint8_t buffer[2];
 
   // Читаем оба байта одной страницей
-  if (eeprom_read_page(addr, buffer, 2) != 0) return -1;
+  if (eeprom_read_page(addr, buffer, 2) != 0)
+    return -1;
 
   *value = ((uint16_t)buffer[1] << 8) | buffer[0];
   return 0;
@@ -358,47 +396,48 @@ int eeprom_clear_all_uint16_vars(void) {
   // Очищаем каждую переменную отдельно
   for (uint16_t i = 1; i <= VAR_UINT16_COUNT; i++) {
     uint16_t addr = VARS_START_ADDR + (i - 1) * 2;
-    
+
     // Записываем 0xFF в каждый байт
-    if (eeprom_write_byte(addr, 0xFF) != 0) return -1;
+    if (eeprom_write_byte(addr, 0xFF) != 0)
+      return -1;
     delay_simple(1000);
-    
-    if (eeprom_write_byte(addr + 1, 0xFF) != 0) return -1;
+
+    if (eeprom_write_byte(addr + 1, 0xFF) != 0)
+      return -1;
     delay_simple(1000);
   }
   return 0;
 }
 
-#include  "stdlib.h"
-#define		_EEPROM_SIZE_KBIT		32       /* 256K (32,768 x 8) */
-#define		_EEPROM_ADDRESS			0xA0
+#include "stdlib.h"
+#define _EEPROM_SIZE_KBIT 32 /* 256K (32,768 x 8) */
+#define _EEPROM_ADDRESS 0xA0
 #if (_EEPROM_SIZE_KBIT == 1) || (_EEPROM_SIZE_KBIT == 2)
-#define _EEPROM_PSIZE     8
+#define _EEPROM_PSIZE 8
 #elif (_EEPROM_SIZE_KBIT == 4) || (_EEPROM_SIZE_KBIT == 8) || (_EEPROM_SIZE_KBIT == 16)
-#define _EEPROM_PSIZE     16
+#define _EEPROM_PSIZE 16
 #else
-#define _EEPROM_PSIZE     32
+#define _EEPROM_PSIZE 32
 #endif
 
 /**
-  * @brief  Checks if memory device is ready for communication.
-  * @param  none
-  * @retval bool
-  */
-uint8_t at24_isConnected(void);
+ * @brief  Checks if memory device is ready for communication.
+ * @param  none
+ * @retval bool
+ */
+// uint8_t at24_isConnected(void);
 uint8_t at24_write(uint16_t address, uint8_t *data, size_t lenInBytes, uint32_t timeout);
-uint8_t at24_eraseChip(void)
-{
-  const uint8_t eraseData[32] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF\
-    , 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-  uint32_t bytes = 0;
-  while ( bytes < (_EEPROM_SIZE_KBIT * 128))
-  {
-    if (at24_write(bytes, (uint8_t*)eraseData, sizeof(eraseData), 100) != 0)
+uint8_t at24_eraseChip(void) {
+  const uint8_t eraseData[32] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+                                 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+                                 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+  uint32_t bytes              = 0;
+  while (bytes < (_EEPROM_SIZE_KBIT * 128)) {
+    if (at24_write(bytes, (uint8_t *)eraseData, sizeof(eraseData), 100) != 0)
       return -1;
-    bytes += sizeof(eraseData);           
+    bytes += sizeof(eraseData);
   }
-  return 0;  
+  return 0;
 }
 
 // Eof eeprom.c

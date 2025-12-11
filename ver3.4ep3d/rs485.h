@@ -2,10 +2,10 @@
 #define __RS485_H__
 #include "stm32f10x.h"
 
-#define RS485DE1 GPIOB->BSRR = GPIO_BSRR_BS15  // DE = 1 (передача)
-#define RS485DE0 GPIOB->BSRR = GPIO_BSRR_BR15  // DE = 0 (приём)
+#define RS485DE1 GPIOB->BSRR = GPIO_BSRR_BS15    // DE = 1 (передача)
+#define RS485DE0 GPIOB->BSRR = GPIO_BSRR_BR15    // DE = 0 (приём)
 #define RS485_DEFAULT_BAUD 4800
-#define TRANSMITLENGHT 28
+#define TRANSMITLENGHT 32
 
 void rs485_init1(void);
 void rs485_init(uint32_t baudrate);
@@ -17,4 +17,4 @@ int cp1251_to_utf8(uint8_t cp1251_char, char *utf8_buf);
 // Возвращает выделенную в куче UTF-8 строку или NULL при ошибке
 char *cp1251_to_utf8_alloc(const char *cp1251_str);
 
-#endif // __RS485_H__
+#endif    // __RS485_H__

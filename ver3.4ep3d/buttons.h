@@ -2,7 +2,6 @@
 #define __BUTTONS_H__
 #include "stm32f10x.h"
 
-
 // Определения состояния кнопки
 typedef enum { BTN_RELEASED = 0, BTN_PRESSED = 1 } button_state;
 
@@ -44,4 +43,4 @@ void btn_press_handler5(void);         // Для ENC_BTN
 void btn_long_press_handler5(void);    // Для ENC_BTN
 uint8_t read_button(uint8_t button_id);
 
-#endif // __BUTTONS_H__
+#endif                                 // __BUTTONS_H__

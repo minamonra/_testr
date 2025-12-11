@@ -68,11 +68,13 @@ void rs485_send(char *data, uint16_t len) {
   RS485DE1;    // Включаем передачу (DE = 1)
 
   for (uint16_t i = 0; i < len; i++) {
-    while (!(USART1->SR & USART_SR_TXE));    // Ждем готовности передатчика
+    while (!(USART1->SR & USART_SR_TXE))
+      ;    // Ждем готовности передатчика
     USART1->DR = (data[i] & 0xFF);
   }
 
-  while (!(USART1->SR & USART_SR_TC));       // Ждем окончания передачи последнего байта
+  while (!(USART1->SR & USART_SR_TC))
+    ;          // Ждем окончания передачи последнего байта
 
   RS485DE0;    // Возвращаемся в режим приёма (DE = 0)
 }
@@ -102,7 +104,8 @@ void rs485_init1(void) {
 void rs485_send_string_with_se_markers(const char *str) {
   // Выделим буфер длиной len + 2 (для < и >)
   uint16_t len = 0;
-  while (str[len] && len < TRANSMITLENGHT - 2) len++;
+  while (str[len] && len < TRANSMITLENGHT - 2)
+    len++;
 
   char buffer[TRANSMITLENGHT] = {0};
   buffer[0]                   = '<';
@@ -116,13 +119,16 @@ void rs485_send_string_with_se_markers(const char *str) {
 
 void rs485_send_string_with_params(char brightness, char res1, char res2, const char *str) {
   // Убедимся, что brightness — цифра от 0 до 9
-  if (brightness < 0) brightness = 0;
-  if (brightness > 9) brightness = 9;
+  if (brightness < 0)
+    brightness = 0;
+  if (brightness > 9)
+    brightness = 9;
 
   // Рассчитываем максимальную длину строки для копирования
   uint16_t max_payload_len = TRANSMITLENGHT - 2 - 3;    // 2 — для '<' и '>', 3 — для добавленных символов
   uint16_t len             = 0;
-  while (str[len] && len < max_payload_len) len++;
+  while (str[len] && len < max_payload_len)
+    len++;
 
   char buffer[TRANSMITLENGHT] = {0};
   buffer[0]                   = '<';
@@ -186,12 +192,14 @@ int cp1251_to_utf8(uint8_t cp1251_char, char *utf8_buf) {
 
 // Возвращает выделенную в куче UTF-8 строку или NULL при ошибке
 char *cp1251_to_utf8_alloc(const char *cp1251_str) {
-  if (!cp1251_str) return NULL;
+  if (!cp1251_str)
+    return NULL;
 
   // Оценка максимального размера: каждый символ CP1251 может стать до 2 байт UTF-8
   size_t max_len = 2 * strlen(cp1251_str) + 1;
   char *utf8_str = malloc(max_len);
-  if (!utf8_str) return NULL;
+  if (!utf8_str)
+    return NULL;
 
   size_t i = 0, j = 0;
   while (cp1251_str[i]) {
